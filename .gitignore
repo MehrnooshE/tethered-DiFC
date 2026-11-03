@@ -1,0 +1,22 @@
+# Python environment (each user creates their own from requirements.txt)
+t-difc-env/
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store
+
+# recordings: never committed, wherever they are
+*.mat
+*.zip
+
+# data/: only the folder structure is kept (one .gitkeep per folder). Scans, links to
+# scans and caches stay local.
+data/*/*
+!data/*/.gitkeep
+# ...except the train/val/test splits the model was trained on (about 64 MB)
+!data/train-val-test/Joint-Standardization-Augmented/
+
+# results/: the clearance-cohort results are kept; exploratory-scan results stay local
+results/pulsed-exploratory/*
+!results/pulsed-exploratory/.gitkeep
+results/continuous-exploratory/*
+!results/continuous-exploratory/.gitkeep
