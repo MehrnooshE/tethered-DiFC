@@ -79,7 +79,22 @@ results/
 
 ## Setup
 
-The scripts need **Python 3.11** and the packages in `requirements.txt` (NumPy, pandas, SciPy, scikit-learn, Matplotlib, TensorFlow 2.13, tqdm; python-pptx and lxml for the two `.pptx` figure scripts; ipykernel and IPython for the notebook). The versions are pinned to the ones the pipeline was run and checked with. TensorFlow runs on the CPU; no GPU is needed.
+**Getting the code.** Clone the repository once:
+
+```
+git clone https://github.com/MehrnooshE/tethered-DiFC.git
+```
+
+**Updating to the latest version.** To bring an existing copy up to date with what is on GitHub, run inside the repository folder:
+
+```
+cd <repository folder>
+git pull
+```
+
+This only changes files that are tracked in the repository; your recordings in `data/`, the caches, the exploratory results and `t-difc-env/` are not touched (`.gitignore` keeps them out). If `git pull` stops because you edited a tracked file (for example, a notebook you ran, or `results/clearance-cohort/` after rerunning steps 8–12), either keep your changes aside with `git stash`, then `git pull` (and `git stash pop` to bring them back), or discard them with `git checkout -- <file>` before pulling.
+
+**Python environment.** The scripts need **Python 3.11** and the packages in `requirements.txt` (NumPy, pandas, SciPy, scikit-learn, Matplotlib, TensorFlow 2.13, tqdm; python-pptx and lxml for the two `.pptx` figure scripts; ipykernel and IPython for the notebook). The versions are pinned to the ones the pipeline was run and checked with. TensorFlow runs on the CPU; no GPU is needed.
 
 The environment is called **`t-difc-env`**. Create it once, inside the repository folder:
 
