@@ -10,7 +10,7 @@ The model is described in `methods_fusion_lr1e-4_wd_ls_v5.md` and `tDiFC_ML_Meth
 ## Layout
 
 ```
-├── scripts/          all code: numbered steps, library modules, the step-14 notebook
+├── scripts/          all code: numbered steps, library modules, the step-13 and step-14 notebooks
 ├── data/             inputs and caches (folder structure only, plus the train/val/test splits)
 ├── models/           the trained model, its validation / test evaluation, model figures
 ├── results/          full-scan results and figures
@@ -19,7 +19,7 @@ The model is described in `methods_fusion_lr1e-4_wd_ls_v5.md` and `tDiFC_ML_Meth
 
 ### What the repository contains
 
-- **Included:** the code, the 5 trained seeds and their evaluation (`models/`), the train/val/test splits the model was trained on (`data/train-val-test/Joint-Standardization-Augmented/`), the clearance-cohort results (`results/clearance-cohort/`), the step-14 notebook with the outputs of its last run, and every `data/` and `results/` folder (empty folders hold a `.gitkeep`).
+- **Included:** the code, the 5 trained seeds and their evaluation (`models/`), the train/val/test splits the model was trained on (`data/train-val-test/Joint-Standardization-Augmented/`), the clearance-cohort results (`results/clearance-cohort/`), the step-14 notebook with the outputs of its last run, the step-13 notebook (without outputs), and every `data/` and `results/` folder (empty folders hold a `.gitkeep`).
 - **Not included:** the full-scan recordings (`.mat`) and everything derived from them locally (caches, exploratory-scan results), and the Python environment. `.gitignore` keeps these out.
 
 So step 6 (model evaluation) runs right after Setup. The full-scan steps need recordings: put them in the `data/` folders described below. A step that needs data that is not there stops with a message naming the missing folder or file.
@@ -169,6 +169,8 @@ For example, put a continuous scan's `.mat` files in `data/continuous-explorator
 Step 14 takes the path of a scan folder anywhere, including a network drive: `python scripts/14_pulsed_exploratory_scan.py "/path/to/<scan>"`, or on macOS an `smb://<server>/<share>/<folder>` address of a connected share (read from `/Volumes/<share>/<folder>`, where macOS mounts it). Quote the path if it has spaces (`%20` also works). The folder is linked, not copied, and the folder name becomes the scan name. The `.mat` files are only read; caches and results are written inside the repository. A network drive must stay connected while the scan is rerun. For step 13, link a folder by hand: `ln -s "/path/to/<scan>" data/continuous-exploratory-raw/<scan>`.
 
 **Notebook version of step 14:** `scripts/14_pulsed_exploratory_scan.ipynb`. Set `DATA_PATH` in the first cell to the scan folder (a path or an `smb://` address, as for the script) and run all cells with the `t-difc-env (Python 3.11)` kernel (see Setup). It runs the same analysis as the script (same files in `results/pulsed-exploratory/<scan>/`) and shows the summary, timeline, barcode, the candidate table and the 1-s raw window of every candidate with its probability, in two parts: the detected peaks (p ≥ cut-off) and the artifacts (p < cut-off), each sorted by time or probability (`SORT_BY`, `MAX_WINDOWS`). The saved outputs in the repository are from its last run.
+
+**Notebook version of step 13:** `scripts/13_continuous_exploratory_scan.ipynb`. Set `SCAN` in the first cell to a folder in `data/continuous-exploratory-raw/`, or `DATA_PATH` to a scan folder anywhere (local or NAS, linked in as by step 14), and run all cells with the `t-difc-env (Python 3.11)` kernel. It runs the same analysis as the script (same files in `results/continuous-exploratory/<scan>/`) and shows the summary, timeline, barcode, the clearance fit (decay plot, fit values, counts per 5-min bin), the candidate table with a histogram of the probabilities, and the 1-s raw windows of the detected peaks and the artifacts (`SORT_BY`, `TIME_RANGE_H`, `MAX_WINDOWS`; at most 48 windows per part by default, since a continuous scan can have thousands of peaks). It is saved without outputs.
 
 ### Method figures
 
