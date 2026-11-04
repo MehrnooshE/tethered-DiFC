@@ -5,7 +5,8 @@ scan is read from / written to and in continuous scans being preprocessed as con
 
 Same processing as the cohort: full_scan_preprocessing, split-overlap check (files with
 a window already in train/val/test are left out), 5-seed scoring (scoring.py), the plots
-of scan_figures.py, and the clearance model of clearance_fit.py on this scan alone.
+of scan_figures.py, and (fit_clearance=True: step 13; not for the pulsed scans of step 14) the
+clearance model of clearance_fit.py on this scan alone.
 
 Writes <out_root>/<scan>/:
   summary.csv                  files, pulsed / continuous, hours, candidates, detected peaks
@@ -14,9 +15,9 @@ Writes <out_root>/<scan>/:
   barcode.{png,pdf}            detected peaks vs time, one row, detected-peak count on the right
   timeline.{png,pdf}           barcode above the probability of every candidate
   windows_detected[_pN].png, windows_rejected_nearmiss[_pN].png, windows_rejected_random.png
-  clearance_bins.csv           detections per 5-min bin, normalized to the maximum bin
-  clearance_fit.csv            single exponential (tau, half-life) and double exponential fits
-  clearance_decay.{png,pdf}    normalized counts with both fits
+  clearance_bins.csv           (fit_clearance only) detections per 5-min bin, normalized to the maximum bin
+  clearance_fit.csv            (fit_clearance only) single exponential (tau, half-life) and double exponential fits
+  clearance_decay.{png,pdf}    (fit_clearance only) normalized counts with both fits
   split_overlap.csv            candidates that are windows already in the splits
 """
 import os
@@ -71,11 +72,21 @@ def clearance(times_h, hours, tag, color, out):
     y = n / n.max()
     pd.DataFrame({"bin_start_h": t, "count": n, "normalized": y}).to_csv(os.path.join(out, "clearance_bins.csv"),
                                                                           index=False)
-    (tau,), cov = curve_fit(cf.single, t, y, p0=[0.5], bounds=(1e-3, 50))
     row = {"n_peaks": int(n.sum()), "initial_count": int(n[0]), "max_bin_count": int(n.max()),
-           "max_bin_time_h": float(t[np.argmax(n)]), "tau_h": tau, "tau_se_h": float(np.sqrt(cov[0, 0])),
-           "half_life_h": tau * np.log(2), "red_chi2_single": cf.red_chi2(y, cf.single(t, tau), 1)}
+           "max_bin_time_h": float(t[np.argmax(n)])}
     try:
+        (tau,), cov = curve_fit(cf.single, t, y, p0=[0.5], bounds=(1e-3, 50))
+        row.update({"tau_h": tau, "tau_se_h": float(np.sqrt(cov[0, 0])), "half_life_h": tau * np.log(2),
+                    "red_chi2_single": cf.red_chi2(y, cf.single(t, tau), 1)})
+    except RuntimeError:                                     # no decay from t = 0 (e.g. first bin empty)
+        tau = None
+        row.update({"tau_h": np.nan, "tau_se_h": np.nan, "half_life_h": np.nan, "red_chi2_single": np.nan})
+        print(f"single exponential did not converge: no clearance from t = 0 (first bin {int(n[0])} of max "
+              f"{int(n.max())} at {t[np.argmax(n)]:.2f} h); tau left empty")
+    p2 = None
+    try:
+        if tau is None:                                      # no decay to split into two phases
+            raise RuntimeError
         p2, _ = curve_fit(cf.double, t, y, p0=[0.8, 0.2, 0.2, 2.0], bounds=([0, 1e-3, 0, 1e-3], [5, 50, 5, 50]),
                           maxfev=20000)
         if p2[1] > p2[3]:                                    # report the fast phase as tau1
@@ -84,14 +95,16 @@ def clearance(times_h, hours, tag, color, out):
                     "red_chi2_double": cf.red_chi2(y, cf.double(t, *p2), 4)})
     except RuntimeError:
         p2 = None
-        print("double exponential did not converge")
+        print("double exponential not fitted" if tau is None else "double exponential did not converge")
     pd.DataFrame([row]).to_csv(os.path.join(out, "clearance_fit.csv"), index=False)
 
     fig, ax = plt.subplots(figsize=(5.2, 3.4))
     ax.plot(t, y, color=color, lw=0.8, alpha=0.8, marker="o", ms=2.5)
     xmax = 2 * int(np.ceil(hours / 2))
     tt = np.linspace(0, xmax, 800)
-    ax.plot(tt, cf.single(tt, tau), color=color, lw=2.2, label=f"Single exp., t½ = {tau * np.log(2) * 60:.0f} min")
+    if tau is not None:
+        ax.plot(tt, cf.single(tt, tau), color=color, lw=2.2,
+                label=f"Single exp., t½ = {tau * np.log(2) * 60:.0f} min")
     if p2 is not None:
         ax.plot(tt, cf.double(tt, *p2), color=mc.COLORS["ink"], lw=1.4, ls="--", label="Double exp.")
     ax.set_xlim(0, xmax)
@@ -99,7 +112,10 @@ def clearance(times_h, hours, tag, color, out):
     ax.set_xticks(range(0, xmax + 1, 2 if xmax > 6 else 1))
     ax.set_xlabel("Time (h)")
     ax.set_ylabel("Normalized counts")
-    ax.legend(frameon=False, loc="upper right")
+    if ax.get_legend_handles_labels()[0]:
+        ax.legend(frameon=False, loc="upper right")
+    else:
+        ax.text(0.98, 0.97, "no exponential fit", transform=ax.transAxes, ha="right", va="top", fontsize=10)
     ax.text(0.02, 0.97, tag, transform=ax.transAxes, ha="left", va="top", fontsize=13)
     fig.tight_layout()
     for ext in ("png", "pdf"):
@@ -133,11 +149,13 @@ def link_scan(path, raw_root, name=None):
     return name
 
 
-def analyse(name, in_root, prep_root, als_root, out_root, pulsed=None, label=sf.label, cell_line=None, color=None):
+def analyse(name, in_root, prep_root, als_root, out_root, pulsed=None, label=sf.label, cell_line=None, color=None,
+            fit_clearance=True):
     """Full analysis of in_root/<name>/ (.mat files; zips in in_root are unpacked first); caches in
     prep_root/<name>/ and als_root/, results in out_root/<name>/.
     pulsed: None = detect per file (as the cohort), False = continuous recording.
-    label(scan, files) -> (row label, ...); cell_line / color: fixed, or from the file names."""
+    label(scan, files) -> (row label, ...); cell_line / color: fixed, or from the file names.
+    fit_clearance: False = no clearance fit or plot (pulsed exploratory scans, step 14)."""
     os.makedirs(in_root, exist_ok=True)
     p5.unpack_new_zips(root=in_root)
     if not os.path.isdir(os.path.join(in_root, name)):
@@ -164,7 +182,8 @@ def analyse(name, in_root, prep_root, als_root, out_root, pulsed=None, label=sf.
     det, near = sf.scan_outputs(sc["raw"], d, hours, out, exclude=seen)
     times_h = d.time_h.values[det]
     barcode(times_h, len(det), row_label, hours, color, os.path.join(out, "barcode"))
-    clearance(times_h, hours, cl or row_label, color, out)
+    if fit_clearance:
+        clearance(times_h, hours, cl or row_label, color, out)
 
     r = scoring.summary_row(sc, p, seen)
     assert (r["detected_peaks"], r["near_miss"]) == (len(det), len(near))

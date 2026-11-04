@@ -75,7 +75,7 @@ results/
 | `clearance-cohort/per-scan/<scan>/` figures | `timeline`, galleries of detected / near-miss / random rejected windows |
 | `clearance-cohort/barcodes/` | Barcode figures per cell line (L1210A, LLC, MM, Control) and `barcode_counts.csv` |
 | `clearance-cohort/clearance/` | Clearance decay and half-life figures; `clearance_per_scan/fits/tests.csv` |
-| `pulsed-exploratory/<scan>/`, `continuous-exploratory/<scan>/` | Steps 14 and 13: `summary.csv`, `candidates.csv`, `barcode`, `timeline`, window galleries, `clearance_bins.csv`, `clearance_fit.csv`, `clearance_decay`, `split_overlap.csv`. No other step reads them. |
+| `pulsed-exploratory/<scan>/`, `continuous-exploratory/<scan>/` | Steps 14 and 13: `summary.csv`, `candidates.csv`, `barcode`, `timeline`, window galleries, `split_overlap.csv`; step 13 also `clearance_bins.csv`, `clearance_fit.csv`, `clearance_decay`. No other step reads them. |
 
 ## Setup
 
@@ -157,7 +157,7 @@ Steps 8, 9 and 10 also accept scan names, e.g. `python scripts/09_clearance_coho
 
 ### D. Exploratory scans (steps 13 and 14)
 
-These scans are analysed one at a time, on their own: a scan is never grouped with the cohort or with any other scan, and the step needs no other step to run first. Both steps run the same pipeline (`independent_scan.py`): preprocessing, split-overlap check, 5-seed scoring, then summary, barcode, timeline, window galleries and a clearance fit of that scan. Cell line and mouse label are read from the `.mat` file names.
+These scans are analysed one at a time, on their own: a scan is never grouped with the cohort or with any other scan, and the step needs no other step to run first. Both steps run the same pipeline (`independent_scan.py`): preprocessing, split-overlap check, 5-seed scoring, then summary, barcode, timeline and window galleries of that scan; step 13 (continuous) also fits the clearance of that scan, step 14 (pulsed) does not. Cell line and mouse label are read from the `.mat` file names.
 
 | Step | Script | Input | Output |
 |---|---|---|---|
@@ -168,7 +168,7 @@ For example, put a continuous scan's `.mat` files in `data/continuous-explorator
 
 Step 14 takes the path of a scan folder anywhere, including a network drive: `python scripts/14_pulsed_exploratory_scan.py "/path/to/<scan>"`, or on macOS an `smb://<server>/<share>/<folder>` address of a connected share (read from `/Volumes/<share>/<folder>`, where macOS mounts it). Quote the path if it has spaces (`%20` also works). The folder is linked, not copied, and the folder name becomes the scan name. The `.mat` files are only read; caches and results are written inside the repository. A network drive must stay connected while the scan is rerun. For step 13, link a folder by hand: `ln -s "/path/to/<scan>" data/continuous-exploratory-raw/<scan>`.
 
-**Notebook version of step 14:** `scripts/14_pulsed_exploratory_scan.ipynb`. Set `DATA_PATH` in the first cell to the scan folder (a path or an `smb://` address, as for the script) and run all cells with the `t-difc-env (Python 3.11)` kernel (see Setup). It runs the same analysis as the script (same files in `results/pulsed-exploratory/<scan>/`) and shows the summary, timeline, barcode, clearance fit, the candidate table and the 1-s raw window of every candidate with its probability, in two parts: the detected peaks (p ≥ cut-off) and the artifacts (p < cut-off), each sorted by time or probability (`SORT_BY`, `MAX_WINDOWS`). The saved outputs in the repository are from its last run.
+**Notebook version of step 14:** `scripts/14_pulsed_exploratory_scan.ipynb`. Set `DATA_PATH` in the first cell to the scan folder (a path or an `smb://` address, as for the script) and run all cells with the `t-difc-env (Python 3.11)` kernel (see Setup). It runs the same analysis as the script (same files in `results/pulsed-exploratory/<scan>/`) and shows the summary, timeline, barcode, the candidate table and the 1-s raw window of every candidate with its probability, in two parts: the detected peaks (p ≥ cut-off) and the artifacts (p < cut-off), each sorted by time or probability (`SORT_BY`, `MAX_WINDOWS`). The saved outputs in the repository are from its last run.
 
 ### Method figures
 
